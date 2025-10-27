@@ -223,7 +223,7 @@ Button(text='Copy', command=lambda: gtc(), relief='flat', bg="#FAD4CE").place(an
 Button(text='Download as PDF', width=25, command=lambda: save_to_file(), relief='flat', bg="#FAD4CE").place(anchor='n', relwidth=0.3, relx=0.8, rely=0.8)  
 
 button_frame = Frame(root, bg='#F7FFF7')
-button_frame.place(anchor='e', relwidth=0.55, relheight=0.05, relx=0.6, rely=0.93) 
+button_frame.place(anchor='center', relheight=0.05, relx=0.32, rely=0.93) 
 Button(button_frame, text="Upload", command=lambda: upload_image(), relief='flat', bg="#FAD4CE").pack(side='left', padx=5)
 Label(button_frame, text="Rotate (°):", font=('Segoe Script', 10), bg='#F7FFF7').pack(side='left', padx=5)
 Scale(button_frame, bg='#F7FFF7', highlightthickness=0, relief='flat', from_=-90, to=90, orient=HORIZONTAL, length=150, variable=angle_var, command=lambda e: draw_all()).pack(side='left', padx=5)
