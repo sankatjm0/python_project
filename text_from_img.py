@@ -161,9 +161,10 @@ def do_drag(event):
     draw_all()
 
 def start_drag(event):
-    global drag_edge, drag_start
+    global drag_edge, drag_start, x_offset, y_offset
     drag_edge = detect_edge(event)
-    drag_start = (event.x, event.y)
+    drag_start = (event.x - x_offset, event.y - y_offset)
+
 
 def end_drag(event):
     global drag_edge, drag_start
