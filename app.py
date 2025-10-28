@@ -22,7 +22,7 @@ except ImportError as e:
     messagebox.showerror("Lỗi Import", f"Không thể import module xử lý ảnh: {e}\nKiểm tra cấu trúc thư mục và file __init__.py.")
 
 root = Tk()
-font_path = os.path.join(os.path.dirname(__file__), "..", "dejavu-sans-ttf-2.37", "dejavu-sans-ttf-2.37", "ttf", "DejaVuSans.ttf")
+font_path = os.path.join(os.path.dirname(__file__), "dejavu-sans-ttf-2.37", "dejavu-sans-ttf-2.37", "ttf", "DejaVuSans.ttf")
 font_path = os.path.abspath(font_path)
 pdfmetrics.registerFont(TTFont('DejaVu', font_path, subfontIndex=0))
 default_font = font.nametofont("TkDefaultFont")
