@@ -373,4 +373,3 @@ image_label.bind("<ButtonRelease-1>", end_drag)
 root.bind('<Escape>', toggle_fullscreen)
 root.mainloop()
 
-
