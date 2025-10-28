@@ -18,7 +18,7 @@ RESULT_FILE = 'result.txt'
 
 # --- ĐIỀU CHỈNH THAM SỐ ---
 Y_THRESHOLD_RATIO = 0.7 # Tỷ lệ ngưỡng Y (so với chiều cao TB)
-PADDING_RATIO = 0.17    # Tỷ lệ padding (so với chiều cao TB)
+PADDING_RATIO = 0.14    # Tỷ lệ padding (so với chiều cao TB)
 TARGET_OCR_HEIGHT = 64  # Chiều cao ảnh cuối cùng cho VietOCR
 # -------------------------
 
