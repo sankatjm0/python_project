@@ -15,7 +15,7 @@ try:
     parent_dir = os.path.dirname(current_dir)
     if parent_dir not in sys.path:
         sys.path.append(parent_dir)
-    from handle_image.detection import find_line_groups, crop_and_save_lines
+    from handle_image.detection import find_line_groups, crop_and_save_lines, draw_debug_boxes
     from handle_image.recognition import recognize_text_from_folder
     from utils.clean_folder import clean_folder
 except ImportError as e:
@@ -267,7 +267,8 @@ def run_ocr_pipeline_from_gui():
         return
 
     TEMP_CROP_FOLDER = 'temp_gui_cropped_lines'
-    RESULT_FILE_GUI = 'result_gui.txt'         
+    RESULT_FILE_GUI = 'result_gui.txt'     
+    DEBUG_IMAGE_OUTPUT = 'debug_bounding_boxes.png'    
 
     Y_THRESHOLD_RATIO = 0.7 
     PADDING_RATIO = 0.17
@@ -292,6 +293,9 @@ def run_ocr_pipeline_from_gui():
         if not grouped_boxes:
             status_label.config(text="Error: Text not found.ᐟ.ᐟ")
             return
+        
+        draw_debug_boxes(temp_image_path, grouped_boxes, DEBUG_IMAGE_OUTPUT,
+                             avg_height=avg_h, padding_ratio=PADDING_RATIO)
 
         status_label.config(text=f"Found {len(grouped_boxes)} lines. Cropping...")
         root.update_idletasks()

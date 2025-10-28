@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 
 bundled_models/
+
+temp_gui_cropped_lines/
