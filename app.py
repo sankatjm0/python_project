@@ -2,47 +2,29 @@ from tkinter import *
 from tkinter import filedialog, messagebox, font
 import tkinter as tk
 from PIL import Image, ImageTk, ImageOps
-
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import os
+import sys
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-import os
-import sys
 
 try:
-    # Điều chỉnh đường dẫn sys.path để Python tìm thấy thư mục handle_image
-    # Lấy đường dẫn thư mục chứa file app.py này
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # Lấy đường dẫn thư mục cha (VietNameseHandwrittenOCR)
     parent_dir = os.path.dirname(current_dir)
-    # Thêm thư mục cha vào sys.path để có thể import handle_image
     if parent_dir not in sys.path:
         sys.path.append(parent_dir)
-
     from handle_image.detection import find_line_groups, crop_and_save_lines
     from handle_image.recognition import recognize_text_from_folder
     from utils.clean_folder import clean_folder
 except ImportError as e:
     messagebox.showerror("Lỗi Import", f"Không thể import module xử lý ảnh: {e}\nKiểm tra cấu trúc thư mục và file __init__.py.")
-    # Có thể thoát chương trình ở đây nếu lỗi nghiêm trọng
-    # sys.exit(1)
-
-def resource_path(relative_path):
-    """ Lấy đường dẫn tuyệt đối, hoạt động cho cả dev và PyInstaller """
-    try:
-        # PyInstaller tạo thư mục tạm _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        # Chạy bình thường, base_path là thư mục chứa app.py
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, relative_path)
-
-
-
 
 root = Tk()
+font_path = os.path.join(os.path.dirname(__file__), "..", "dejavu-sans-ttf-2.37", "dejavu-sans-ttf-2.37", "ttf", "DejaVuSans.ttf")
+font_path = os.path.abspath(font_path)
+pdfmetrics.registerFont(TTFont('DejaVu', font_path, subfontIndex=0))
 default_font = font.nametofont("TkDefaultFont")
 default_font.config(family="Segoe Script", size=10)
 root.config(bg='#F7FFF7')
@@ -58,13 +40,11 @@ drag_start = None
 max_size = 600
 scale_factor = 1
 
-# === BIẾN LƯU ẢNH (Quan trọng) ===
-original_img = None # Ảnh gốc khi mở file
-working_img = None  # Ảnh đang được chỉnh sửa (rotate, flip, crop)
-display_img = None  # Ảnh đã resize để hiển thị trên canvas
-tk_img = None       # Ảnh dạng Tkinter PhotoImage
-crop_box = None     # Tọa độ crop hiện tại trên working_img
-# ================================
+original_img = None
+working_img = None 
+display_img = None
+tk_img = None
+crop_box = None 
 
 def get_canvas_size():
     root.update_idletasks()
@@ -85,14 +65,12 @@ def upload_image():
     if filename:
         try:
             global original_img, working_img, display_img, crop_box, scale_factor
-            # original_img = Image.open(filename).convert("RGBA")
-            original_img = Image.open(filename).convert("RGB")
+            original_img = Image.open(filename).convert("RGBA")
             working_img = original_img.copy()
             crop_box = [0, 0, working_img.width, working_img.height]
             scale_factor = 1
             draw_all()
             
-            # Kích hoạt nút Convert khi có ảnh
             convert_button.config(state=tk.NORMAL)
         except Exception as e:
             print(f"Error loading image: {e}")
@@ -101,29 +79,26 @@ def toggle_fullscreen(event=None):
     is_fullscreen = root.attributes('-fullscreen')
     root.attributes('-fullscreen', not is_fullscreen)
 
-def generate_pdf_from_text(text_content, file_path, font_path="GUI/DejaVuSans.ttf"):
-    try:
-        c = canvas.Canvas(file_path, pagesize=letter)
-        textobject = c.beginText()
-        textobject.setTextOrigin(50, 750)
-        textobject.setFont("Helvetica", 12)
+def generate_pdf_from_text(text_content, file_path):
+    c = canvas.Canvas(file_path, pagesize=letter)
+    textobject = c.beginText()
+    textobject.setTextOrigin(50, 750)
+    textobject.setFont("DejaVu", 13)
 
-        for line in text_content.splitlines():
+    for line in text_content.splitlines():
+        try:
+            # Convert an toàn sang str và encode/decode UTF-8
+            if isinstance(line, bytes):
+                line = line.decode('utf-8', errors='ignore')
+            else:
+                line = str(line).encode('utf-8', errors='ignore').decode('utf-8')
             textobject.textLine(line)
+        except Exception as e:
+            print("Lỗi dòng:", line, e)
 
-        c.drawText(textobject)
-        c.save()
-    
-    except FileNotFoundError as fnf_error:
-        print(f"Lỗi Font: {fnf_error}")
-        messagebox.showerror("Lỗi Font", f"{fnf_error}\nHãy tải font DejaVuSans.ttf và đặt vào cùng thư mục.")
-        return False
-    except Exception as e:
-        print(f"Lỗi khi tạo PDF: {e}")
-        messagebox.showerror("Lỗi Tạo PDF", f"Đã xảy ra lỗi: {e}")
-        return False
-    
-    
+    c.drawText(textobject)
+    c.save()
+
 def save_to_file():
     file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")], title="Save PDF File")
     if file_path:
@@ -133,8 +108,6 @@ def save_to_file():
             status_label.config(text="Download successfully!")
         except Exception as e:
             status_label.config(text=f"Error saving file: {str(e)}")
-
-
 
 def draw_all():
     global tk_img, rotated_display, crop_box, scale_factor, canvas_width, canvas_height, x_offset, y_offset
@@ -164,7 +137,6 @@ def draw_all():
 
 def detect_edge(event):
     global crop_box, x_offset, y_offset
-    canvas_width, canvas_height = get_canvas_size()
     scaled_crop = [coord * scale_factor for coord in crop_box]
     x1, y1, x2, y2 = [coord + offset for coord, offset in zip(scaled_crop, [x_offset, y_offset, x_offset, y_offset])]
     x, y = event.x, event.y
@@ -220,7 +192,7 @@ def do_drag(event):
         y2 = min(working_img.height, max(y2 + dy, y1 + 10))
     
     crop_box = [x1, y1, x2, y2]
-    drag_start = (event.x - x_offset, event.y - y_offset)  # Cập nhật drag_start với offset đã trừ
+    drag_start = (event.x - x_offset, event.y - y_offset)
     draw_all()
 
 def start_drag(event):
@@ -234,124 +206,77 @@ def end_drag(event):
     drag_edge = None
     drag_start = None
 
-# def confirm_crop():
-#     global working_img, display_img, crop_box
-#     temp = working_img.copy()
-#     if flip_x.get():
-#         temp = ImageOps.mirror(temp)
-#     if flip_y.get():
-#         temp = ImageOps.flip(temp)
-#     angle = int(angle_var.get()) % 360
-#     if angle in [90, 270]:
-#         temp = temp.transpose(Image.ROTATE_270 if angle == 90 else Image.ROTATE_90)
-#     elif angle != 0:
-#         temp = temp.rotate(-angle, expand=False)
-    
-#     x1, y1, x2, y2 = crop_box
-#     cropped = temp.crop((x1, y1, x2, y2))
-    
-#     working_img = cropped.convert("RGBA")
-#     crop_box = [0, 0, working_img.width, working_img.height] 
-    
-#     angle_var.set(0)
-#     flip_x.set(False)
-#     flip_y.set(False)
-    
-#     draw_all()
-#     messagebox.showinfo("Image Edited", "The image has been edited and loaded.")
-
 def confirm_crop():
-    global working_img, display_img, crop_box, tk_img # Thêm tk_img
+    global working_img, display_img, crop_box, tk_img
     if working_img is None or crop_box is None: return
-
     try:
-        # Cắt ảnh TẠM THỜI (đã rotate/flip nếu có)
         temp = working_img.copy()
         if flip_x.get(): temp = ImageOps.mirror(temp)
         if flip_y.get(): temp = ImageOps.flip(temp)
-        angle = angle_var.get() % 360 # Lấy góc xoay hiện tại
-        # Xoay ảnh tạm thời trước khi cắt
-        temp_rotated = temp.rotate(-angle, expand=True) # expand=True để không mất góc
-
-        # Tính toán lại tọa độ crop trên ảnh đã xoay (phức tạp, cách đơn giản hơn là crop trước rồi xoay)
-        # Cách đơn giản: Áp dụng crop TRÊN working_img (chưa xoay/flip)
-        x1, y1, x2, y2 = [int(c) for c in crop_box] # Chuyển sang int
+        angle = angle_var.get() % 360
+        if angle in [90, 270]:
+            temp = temp.transpose(Image.ROTATE_270 if angle == 90 else Image.ROTATE_90)
+        elif angle != 0:
+            temp = temp.rotate(-angle, expand=False)
         
-        # Đảm bảo tọa độ hợp lệ
-        x1 = max(0, x1); y1 = max(0, y1)
-        x2 = min(working_img.width, x2); y2 = min(working_img.height, y2)
+        x1, y1, x2, y2 = crop_box
+        cropped = temp.crop((x1, y1, x2, y2))
         
-        if x1 >= x2 or y1 >= y2:
-             messagebox.showwarning("Crop Lỗi", "Vùng chọn không hợp lệ.")
-             return
-
-        cropped = working_img.crop((x1, y1, x2, y2))
-
-        # CẬP NHẬT working_img LÀ KẾT QUẢ ĐÃ CẮT
-        working_img = cropped.copy()
+        working_img = cropped.convert("RGBA")
+        crop_box = [0, 0, working_img.width, working_img.height] 
         
-        # Reset crop box về toàn bộ ảnh mới
-        crop_box = [0, 0, working_img.width, working_img.height]
-
-        # Reset các hiệu ứng (vì đã áp dụng crop)
         angle_var.set(0)
         flip_x.set(False)
         flip_y.set(False)
-
-        # Vẽ lại giao diện với ảnh đã cắt
+        
         draw_all()
-        messagebox.showinfo("Thành Công", "Ảnh đã được cắt.")
+        messagebox.showinfo("Image Edited", "The image has been edited and loaded.")
 
     except Exception as e:
         messagebox.showerror("Lỗi Crop", f"Không thể cắt ảnh: {e}")
 
 
 def rotate_fixed(deg):
-    global working_img
+    global working_img, crop_box
     working_img = working_img.rotate(deg, expand=True)
+    crop_box = [0, 0, working_img.width, working_img.height]
     angle_var.set(0) 
     draw_all()
     
 def gtc():
     global content
     content = text_widget.get("1.0", "end-1c")
+    print(pdfmetrics.getFont("DejaVu"))
     root.clipboard_clear()
     root.clipboard_append(content)
     status_label.config(text="Text copied to clipboard ٩(ˊᗜˋ*)و ♡")
     
 def run_ocr_pipeline_from_gui():
-    global working_img, text_widget, status_label, root # Thêm root để update GUI
+    global working_img, text_widget, status_label, root
 
     if working_img is None:
         messagebox.showwarning("Thiếu ảnh", "Vui lòng tải hoặc cắt ảnh trước khi Convert.")
         return
-
-    # 1. Lưu ảnh hiện tại (working_img) ra file tạm PNG
     temp_image_path = "temp_gui_image_for_ocr.png"
     try:
-        img_to_save = working_img.convert("RGB") # Đảm bảo là RGB
+        img_to_save = working_img.convert("RGBA")
         img_to_save.save(temp_image_path, "PNG")
         print(f"Đã lưu ảnh tạm thời tại: {temp_image_path}")
     except Exception as e:
         messagebox.showerror("Lỗi Lưu Ảnh Tạm", f"Không thể lưu ảnh tạm: {e}")
         return
 
-    # 2. Cấu hình cho quy trình OCR (Lấy từ main.py)
-    TEMP_CROP_FOLDER = 'temp_gui_cropped_lines' # Thư mục tạm cho ảnh dòng
-    RESULT_FILE_GUI = 'result_gui.txt'          # File lưu kết quả (tùy chọn)
+    TEMP_CROP_FOLDER = 'temp_gui_cropped_lines'
+    RESULT_FILE_GUI = 'result_gui.txt'         
 
-    # --- SỬ DỤNG THAM SỐ TỶ LỆ ---
-    Y_THRESHOLD_RATIO = 0.7 # Bạn có thể lấy từ Entry/Scale trong GUI nếu muốn
-    PADDING_RATIO = 0.17    # Hoặc từ GUI
-    TARGET_OCR_HEIGHT = 64  # Chiều cao chuẩn
-    # -----------------------------
+    Y_THRESHOLD_RATIO = 0.7 
+    PADDING_RATIO = 0.17
+    TARGET_OCR_HEIGHT = 64
 
-    # 3. Dọn dẹp thư mục tạm cũ
     clean_folder(TEMP_CROP_FOLDER)
 
-    # 4. Chạy quy trình
-    status_label.config(text="Đang phát hiện dòng...")
-    root.update_idletasks() # Cập nhật giao diện ngay lập tức
+    status_label.config(text="Detecting lines... 𐔌՞. .՞𐦯")
+    root.update_idletasks()
 
     grouped_boxes = None
     avg_h = 0
@@ -359,72 +284,57 @@ def run_ocr_pipeline_from_gui():
     final_text_result = None
 
     try:
-        # === BƯỚC 1: TÌM NHÓM DÒNG ===
-        # Hàm find_line_groups trả về nhóm hộp và chiều cao TB (avg_h)
         grouped_boxes, avg_h = find_line_groups(
-            temp_image_path, # Dùng ảnh tạm
+            temp_image_path, 
             y_threshold_ratio=Y_THRESHOLD_RATIO
         )
 
         if not grouped_boxes:
-            status_label.config(text="Lỗi: Không tìm thấy dòng chữ.")
-            # Không cần xóa file tạm ngay, sẽ xóa ở finally
+            status_label.config(text="Error: Text not found.ᐟ.ᐟ")
             return
 
-        status_label.config(text=f"Tìm thấy {len(grouped_boxes)} dòng. Đang cắt...")
+        status_label.config(text=f"Found {len(grouped_boxes)} lines. Cropping...")
         root.update_idletasks()
 
-        # === BƯỚC 2: CẮT, XỬ LÝ (NẾU CÓ) VÀ LƯU ẢNH ===
         cropped_files = crop_and_save_lines(
-            temp_image_path, # Dùng ảnh tạm
+            temp_image_path,
             grouped_boxes,
             TEMP_CROP_FOLDER,
             avg_height=avg_h,
             padding_ratio=PADDING_RATIO,
-            target_ocr_height=TARGET_OCR_HEIGHT # Truyền chiều cao resize
+            target_ocr_height=TARGET_OCR_HEIGHT
         )
 
         if not cropped_files:
-            status_label.config(text="Lỗi: Cắt ảnh thất bại.")
-            # Không cần xóa file tạm ngay
+            status_label.config(text="Error: Cropping failed.")
             return
 
-        status_label.config(text="Cắt thành công. Đang nhận dạng...")
+        status_label.config(text="Cropping successfully. Identifying...")
         root.update_idletasks()
 
-        # === BƯỚC 3: NHẬN DẠNG ===
         final_text_result = recognize_text_from_folder(TEMP_CROP_FOLDER, RESULT_FILE_GUI)
 
-        # 5. Hiển thị kết quả và thông báo
         if final_text_result is not None:
-            text_widget.delete("1.0", tk.END) # Xóa nội dung cũ
-            text_widget.insert(tk.END, final_text_result) # Chèn kết quả mới
-            status_label.config(text="Nhận dạng thành công!")
-            # Tùy chọn: messagebox.showinfo("Hoàn tất", "Đã nhận dạng thành công!")
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert(tk.END, final_text_result)
+            status_label.config(text="Identifying successfully!")
         else:
-            status_label.config(text="Lỗi: Nhận dạng thất bại.")
+            status_label.config(text="Error: Identifying failed.")
 
     except Exception as e:
-        status_label.config(text=f"Lỗi quy trình OCR: {str(e)[:100]}...") # Giới hạn độ dài lỗi
-        messagebox.showerror("Lỗi OCR", f"Đã xảy ra lỗi trong quy trình:\n{e}")
-        # In lỗi chi tiết ra console để debug
+        status_label.config(text=f"OCR process failed: {str(e)[:100]}...")
+        messagebox.showerror("OCR error", f"An error occurred in the process.:\n{e}")
         import traceback
         traceback.print_exc()
     finally:
-        # 6. Xóa file ảnh tạm (luôn thực hiện)
         if os.path.exists(temp_image_path):
             try:
                 os.remove(temp_image_path)
                 print(f"Đã xóa ảnh tạm: {temp_image_path}")
             except Exception as e:
                 print(f"Lỗi khi xóa ảnh tạm: {e}")
-        # (Tùy chọn) Xóa thư mục ảnh dòng tạm
-        # import shutil
-        # if os.path.exists(TEMP_CROP_FOLDER):
-        #     shutil.rmtree(TEMP_CROP_FOLDER)
 
 
-# --- Widgets (Giao diện người dùng) ---
 status_label = Label(root, text="", fg="#6BA368", font=('Segoe Script', 10),bg='#F7FFF7')
 status_label.place(anchor='n', relwidth=0.3, relx=0.8, rely=0.85)
 
@@ -437,10 +347,8 @@ esc.place(anchor='center', relx=0.5, rely=0.98)
 
 Label(text='Upload your image to extract text ₍^. .^₎Ⳋ', font=('Segoe Script', 18, "bold"), fg="#83564F", bg='#F7FFF7').place(anchor='center', relx=0.5, rely=0.05)  
 
-# --- NÚT CONVERT ---
-# Button(text='Convert', fg="#83564F", relief='flat', bg="#FAD4CE").place(anchor='n', relwidth=0.3, relx=0.8, rely=0.7) 
 convert_button = Button(text='Convert', fg="#83564F", relief='flat', bg="#FAD4CE",
-                         command=run_ocr_pipeline_from_gui, state=tk.DISABLED) # Thêm command, state=DISABLED ban đầu
+                         command=run_ocr_pipeline_from_gui, state=tk.DISABLED)
 convert_button.place(anchor='n', relwidth=0.3, relx=0.8, rely=0.7)
 
 Button(text='Copy', fg="#83564F", command=lambda: gtc(), relief='flat', bg="#FAD4CE").place(anchor='n', relwidth=0.3, relx=0.8, rely=0.75) 
@@ -464,5 +372,4 @@ image_label.bind("<B1-Motion>", do_drag)
 image_label.bind("<ButtonRelease-1>", end_drag)
 root.bind('<Escape>', toggle_fullscreen)
 root.mainloop()
-
 
