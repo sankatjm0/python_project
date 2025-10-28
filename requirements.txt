@@ -5,3 +5,4 @@ numpy
 pillow==10.2.0
 pillow-heif==0.22.0
 reportlab
+pyinstaller

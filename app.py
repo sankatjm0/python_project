@@ -2,8 +2,12 @@ from tkinter import *
 from tkinter import filedialog, messagebox, font
 import tkinter as tk
 from PIL import Image, ImageTk, ImageOps
+
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
 import os
 import sys
 
@@ -24,6 +28,19 @@ except ImportError as e:
     messagebox.showerror("Lỗi Import", f"Không thể import module xử lý ảnh: {e}\nKiểm tra cấu trúc thư mục và file __init__.py.")
     # Có thể thoát chương trình ở đây nếu lỗi nghiêm trọng
     # sys.exit(1)
+
+def resource_path(relative_path):
+    """ Lấy đường dẫn tuyệt đối, hoạt động cho cả dev và PyInstaller """
+    try:
+        # PyInstaller tạo thư mục tạm _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # Chạy bình thường, base_path là thư mục chứa app.py
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+
+
 
 root = Tk()
 default_font = font.nametofont("TkDefaultFont")
@@ -84,18 +101,29 @@ def toggle_fullscreen(event=None):
     is_fullscreen = root.attributes('-fullscreen')
     root.attributes('-fullscreen', not is_fullscreen)
 
-def generate_pdf_from_text(text_content, file_path):
-    c = canvas.Canvas(file_path, pagesize=letter)
-    textobject = c.beginText()
-    textobject.setTextOrigin(50, 750)
-    textobject.setFont("Helvetica", 12)
+def generate_pdf_from_text(text_content, file_path, font_path="GUI/DejaVuSans.ttf"):
+    try:
+        c = canvas.Canvas(file_path, pagesize=letter)
+        textobject = c.beginText()
+        textobject.setTextOrigin(50, 750)
+        textobject.setFont("Helvetica", 12)
 
-    for line in text_content.splitlines():
-        textobject.textLine(line)
+        for line in text_content.splitlines():
+            textobject.textLine(line)
 
-    c.drawText(textobject)
-    c.save()
-
+        c.drawText(textobject)
+        c.save()
+    
+    except FileNotFoundError as fnf_error:
+        print(f"Lỗi Font: {fnf_error}")
+        messagebox.showerror("Lỗi Font", f"{fnf_error}\nHãy tải font DejaVuSans.ttf và đặt vào cùng thư mục.")
+        return False
+    except Exception as e:
+        print(f"Lỗi khi tạo PDF: {e}")
+        messagebox.showerror("Lỗi Tạo PDF", f"Đã xảy ra lỗi: {e}")
+        return False
+    
+    
 def save_to_file():
     file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")], title="Save PDF File")
     if file_path:
@@ -105,6 +133,8 @@ def save_to_file():
             status_label.config(text="Download successfully!")
         except Exception as e:
             status_label.config(text=f"Error saving file: {str(e)}")
+
+
 
 def draw_all():
     global tk_img, rotated_display, crop_box, scale_factor, canvas_width, canvas_height, x_offset, y_offset
