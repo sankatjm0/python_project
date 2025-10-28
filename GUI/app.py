@@ -6,6 +6,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
 import sys
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 
 try:
@@ -20,6 +22,9 @@ except ImportError as e:
     messagebox.showerror("Lỗi Import", f"Không thể import module xử lý ảnh: {e}\nKiểm tra cấu trúc thư mục và file __init__.py.")
 
 root = Tk()
+font_path = os.path.join(os.path.dirname(__file__), "..", "dejavu-sans-ttf-2.37", "dejavu-sans-ttf-2.37", "ttf", "DejaVuSans.ttf")
+font_path = os.path.abspath(font_path)
+pdfmetrics.registerFont(TTFont('DejaVu', font_path, subfontIndex=0))
 default_font = font.nametofont("TkDefaultFont")
 default_font.config(family="Segoe Script", size=10)
 root.config(bg='#F7FFF7')
@@ -78,10 +83,18 @@ def generate_pdf_from_text(text_content, file_path):
     c = canvas.Canvas(file_path, pagesize=letter)
     textobject = c.beginText()
     textobject.setTextOrigin(50, 750)
-    textobject.setFont("Helvetica", 12)
+    textobject.setFont("DejaVu", 13)
 
     for line in text_content.splitlines():
-        textobject.textLine(line)
+        try:
+            # Convert an toàn sang str và encode/decode UTF-8
+            if isinstance(line, bytes):
+                line = line.decode('utf-8', errors='ignore')
+            else:
+                line = str(line).encode('utf-8', errors='ignore').decode('utf-8')
+            textobject.textLine(line)
+        except Exception as e:
+            print("Lỗi dòng:", line, e)
 
     c.drawText(textobject)
     c.save()
@@ -233,6 +246,7 @@ def rotate_fixed(deg):
 def gtc():
     global content
     content = text_widget.get("1.0", "end-1c")
+    print(pdfmetrics.getFont("DejaVu"))
     root.clipboard_clear()
     root.clipboard_append(content)
     status_label.config(text="Text copied to clipboard ٩(ˊᗜˋ*)و ♡")
